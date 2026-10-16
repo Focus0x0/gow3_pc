@@ -28,6 +28,9 @@
 #define ERR_ALREADY_INIT ((int32_t)0x8026000E)
 #define ERR_NOT_INIT ((int32_t)0x8026000F)
 #define VOLUME_0DB 32768
+#ifndef GOW3_AUDIO_GAIN
+#define GOW3_AUDIO_GAIN 3.0f
+#endif
 
 typedef struct {
     int used, type, channels, is_float, frames, sample_bytes, std_layout, downmix;
@@ -189,7 +192,7 @@ static int32_t output_port(int32_t handle, const void *data, int pace) {
         for (size_t f=0;f<(size_t)p->frames;++f) for (int c=0;c<p->channels;++c) {
             int target=p->channels==8 && !p->std_layout ? remap[c] : c;
             size_t from=f*(size_t)p->channels+(size_t)c, to=f*(size_t)p->channels+(size_t)target;
-            float gain=(float)p->volume[c]/VOLUME_0DB;
+            float gain=(float)p->volume[c]/VOLUME_0DB*GOW3_AUDIO_GAIN;
             if (p->is_float) { float v; memcpy(&v,(const char *)data+from*4,4); v*=gain; memcpy(converted+to*4,&v,4); }
             else { int16_t v; memcpy(&v,(const char *)data+from*2,2); v=(int16_t)((float)v*gain); memcpy(converted+to*2,&v,2); }
         }
