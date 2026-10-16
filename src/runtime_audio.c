@@ -175,6 +175,25 @@ static ABI int32_t audio_close(int32_t handle) {
     pthread_mutex_unlock(&table_lock);
     return p ? 0 : error;
 }
+
+static float get_audio_gain(void)
+{
+    const char *env = getenv("GOW3_AUDIO_GAIN");
+    if (env == NULL || *env == '\0')
+        return 1.0f;
+
+    char *end = NULL;
+    errno = 0;
+    float gain = strtof(env, &end);
+
+    if (errno != 0 || end == env || *end != '\0' ||
+        !isfinite(gain) || gain < 0.0f || gain > 10.0f) {
+        return 1.0f;
+    }
+
+    return gain;
+}
+
 /* `pace`: wait for this port's next period. sceAudioOutOutputs waits once for all its ports. */
 static int32_t output_port(int32_t handle, const void *data, int pace) {
     int32_t error=0;
@@ -192,7 +211,7 @@ static int32_t output_port(int32_t handle, const void *data, int pace) {
         for (size_t f=0;f<(size_t)p->frames;++f) for (int c=0;c<p->channels;++c) {
             int target=p->channels==8 && !p->std_layout ? remap[c] : c;
             size_t from=f*(size_t)p->channels+(size_t)c, to=f*(size_t)p->channels+(size_t)target;
-            float gain=(float)p->volume[c]/VOLUME_0DB*GOW3_AUDIO_GAIN;
+            float gain=(float)p->volume[c]/VOLUME_0DB*get_audio_gain();
             if (p->is_float) { float v; memcpy(&v,(const char *)data+from*4,4); v*=gain; memcpy(converted+to*4,&v,4); }
             else { int16_t v; memcpy(&v,(const char *)data+from*2,2); v=(int16_t)((float)v*gain); memcpy(converted+to*2,&v,2); }
         }
