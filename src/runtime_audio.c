@@ -113,6 +113,26 @@ static Port *port_of(int32_t handle, int32_t *error) {
     return &ports[id];
 }
 
+static float _gain = 1.0f;
+
+static float get_audio_gain(void)
+{
+    const char *env = getenv("GOW3_AUDIO_GAIN");
+    if (env == NULL || *env == '\0')
+        return 1.0f;
+
+    char *end = NULL;
+    errno = 0;
+    float gain = strtof(env, &end);
+
+    if (errno != 0 || end == env || *end != '\0' ||
+        !isfinite(gain) || gain < 0.0f || gain > 10.0f) {
+        return 1.0f;
+    }
+    _gain = gain;
+    return gain;
+}
+
 static ABI int32_t audio_init(void) {
     pthread_mutex_lock(&table_lock);
     int32_t r=initialized ? ERR_ALREADY_INIT : 0;
@@ -177,26 +197,6 @@ static ABI int32_t audio_close(int32_t handle) {
     }
     pthread_mutex_unlock(&table_lock);
     return p ? 0 : error;
-}
-
-static float _gain = 1.0f;
-
-static float get_audio_gain(void)
-{
-    const char *env = getenv("GOW3_AUDIO_GAIN");
-    if (env == NULL || *env == '\0')
-        return 1.0f;
-
-    char *end = NULL;
-    errno = 0;
-    float gain = strtof(env, &end);
-
-    if (errno != 0 || end == env || *end != '\0' ||
-        !isfinite(gain) || gain < 0.0f || gain > 10.0f) {
-        return 1.0f;
-    }
-    _gain = gain;
-    return gain;
 }
 
 /* `pace`: wait for this port's next period. sceAudioOutOutputs waits once for all its ports. */
